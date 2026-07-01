@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% block title %}Ledger — The Archive{% endblock %}
+{% block content %}
+
+<div class="hero-eyebrow">Departmental View</div>
+<h1 style="font-family: var(--font-display); font-size: 2rem; margin: 0 0 28px;">The Ledger.</h1>
+
+<div class="dash-grid">
+  <div class="stat-card">
+    <div class="stat-value">{{ total_projects }}</div>
+    <div class="stat-label">Projects on File</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-value">{{ supervisor_load|length }}</div>
+    <div class="stat-label">Active Supervisors</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-value">{{ topic_counts|length }}</div>
+    <div class="stat-label">Topic Areas Covered</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-value">{{ flagged_pairs|length }}</div>
+    <div class="stat-label">Overlap Flags</div>
+  </div>
+</div>
+
+<div class="panel">
+  <h2>Supervisor Load</h2>
+  {% if supervisor_load %}
+    {% set max_count = supervisor_load[0]['project_count'] %}
+    {% for s in supervisor_load %}
+    <div class="bar-row">
+      <span>{{ s['supervisor'] }}</span>
+      <div class="bar-track"><div class="bar-fill" style="width: {{ (s['project_count'] / max_count * 100)|round }}%;"></div></div>
+      <span class="bar-count">{{ s['project_count'] }}</span>
+    </div>
+    {% endfor %}
+  {% else %}
+    <div class="field-hint">No submissions yet.</div>
+  {% endif %}
+</div>
+
+<div class="panel">
+  <h2>Topic Coverage <span style="color: var(--paper-dim); text-transform: none; letter-spacing: 0;">— spot oversaturated vs. under-explored areas</span></h2>
+  {% if topic_counts %}
+    {% set max_topic = topic_counts[0]['project_count'] %}
+    {% for t in topic_counts %}
+    <div class="bar-row">
+      <span>{{ t['topic_area'] }}</span>
+      <div class="bar-track"><div class="bar-fill" style="width: {{ (t['project_count'] / max_topic * 100)|round }}%;"></div></div>
+      <span class="bar-count">{{ t['project_count'] }}</span>
+    </div>
+    {% endfor %}
+  {% else %}
+    <div class="field-hint">No submissions yet.</div>
+  {% endif %}
+</div>
+
+<div class="panel">
+  <h2>Highest Similarity Flags</h2>
+  {% if flagged_pairs %}
+  <table class="flag-table">
+    <thead>
+      <tr><th>Project</th><th>Overlaps With</th><th>Score</th></tr>
+    </thead>
+    <tbody>
+      {% for f in flagged_pairs %}
+      <tr>
+        <td><a href="{{ url_for('project_detail', project_id=f['pid1']) }}" style="color: var(--gold-bright);">{{ f['t1'] }}</a></td>
+        <td><a href="{{ url_for('project_detail', project_id=f['pid2']) }}" style="color: var(--gold-bright);">{{ f['t2'] }}</a></td>
+        <td class="score">{{ f['similarity_score']|round }}%</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+    <div class="field-hint">No overlaps flagged yet.</div>
+  {% endif %}
+</div>
+
+{% endblock %}
