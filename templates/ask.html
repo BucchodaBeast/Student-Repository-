@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% block title %}Ask the Archive{% endblock %}
+{% block content %}
+
+<div class="hero-eyebrow ai-eyebrow">AI Research Assistant</div>
+<h1 style="font-family: var(--font-display); font-size: 2rem; margin: 0 0 12px;">Ask the Archive.</h1>
+<p style="color: var(--paper-dim); max-width: 60ch; margin: 0 0 28px;">
+  Ask a question in plain language — the assistant reads across every department's abstracts
+  and synthesizes an answer with citations back to specific projects. It only draws on what's
+  actually on file; it won't invent research that doesn't exist here.
+</p>
+
+{% if not ai_enabled %}
+<div class="ai-offline-notice">
+  <strong>AI features are offline.</strong> Set <code>GROQ_API_KEY</code> as an environment
+  variable (in Render: Environment tab) to enable Ask the Archive.
+</div>
+{% endif %}
+
+<form method="post" class="ask-form">
+  <input type="text" name="question" value="{{ question }}"
+         placeholder="e.g. What's been done on healthcare access in rural areas?" autofocus>
+  <button type="submit" class="btn-primary" {{ 'disabled' if not ai_enabled }}>Ask</button>
+</form>
+
+{% if question and answer %}
+<div class="ai-answer-card">
+  <div class="ai-answer-label"><span class="ai-dot"></span>Synthesized from the archive</div>
+  <p class="ai-answer-text">{{ answer }}</p>
+</div>
+
+{% if sources %}
+<div class="section-label">Sources Referenced</div>
+<div class="related-grid">
+  {% for r, score in sources %}
+  <a href="{{ url_for('project_detail', project_id=r['id']) }}" class="related-card">
+    <div class="rc-score">[{{ r['id'] }}] &middot; {{ score }}% relevant &middot; {{ r['department'] }}</div>
+    <div class="rc-title">{{ r['title'] }}</div>
+  </a>
+  {% endfor %}
+</div>
+{% endif %}
+{% elif question and not answer %}
+<div class="empty-state">Couldn't generate an answer — see the notice above.</div>
+{% endif %}
+
+<div class="ask-examples">
+  <div class="section-label">Try Asking</div>
+  <div class="example-chips">
+    <span class="example-chip">What healthcare access problems have been tackled?</span>
+    <span class="example-chip">Has anyone worked on biometric security?</span>
+    <span class="example-chip">What nursing research exists on documentation practices?</span>
+    <span class="example-chip">What Eswatini-specific infrastructure problems are covered?</span>
+  </div>
+</div>
+
+{% endblock %}
+{% block scripts %}
+<script>
+document.querySelectorAll('.example-chip').forEach(function(chip) {
+  chip.addEventListener('click', function() {
+    document.querySelector('.ask-form input[name="question"]').value = chip.textContent;
+  });
+});
+</script>
+{% endblock %}
