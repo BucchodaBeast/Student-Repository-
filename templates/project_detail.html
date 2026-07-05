@@ -1,0 +1,153 @@
+{% extends "base.html" %}
+{% block title %}{{ project['title'] }} — Launchpad{% endblock %}
+{% block content %}
+
+<div class="detail-header">
+  <div class="detail-accession">PRJ&#8209;{{ project['year'] }}&#8209;{{ '%04d' % project['id'] }}</div>
+  <div class="detail-dept-badge">{{ project['department'] }}</div>
+  <h1>{{ project['title'] }}</h1>
+  <div class="detail-institution">{{ project['institution'] }}</div>
+
+  <div style="margin-top: 14px; display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
+    {% if project['live_demo_url'] %}<span class="badge badge-live"><span class="pulse-dot"></span>Live</span>{% endif %}
+    <span class="badge badge-{{ project['status']|lower }}">{{ project['status'] }}</span>
+    <span class="badge" style="background: rgba(255,255,255,0.06); color: var(--text-faint);">{{ project['view_count'] }} view{{ 's' if project['view_count'] != 1 }}</span>
+    {% if can_manage_project(project) and project['approval_status'] != 'approved' %}
+    <span class="badge badge-review-{{ project['approval_status'] }}">{{ project['approval_status']|capitalize }} Review</span>
+    {% endif %}
+  </div>
+
+  {% if can_manage_project(project) and project['approval_status'] == 'rejected' %}
+  <div class="review-note-box">
+    <strong>Rejected{% if reviewer %} by {{ reviewer['name'] }}{% endif %}:</strong>
+    {{ project['review_note'] or 'No reason given.' }}
+  </div>
+  {% elif can_manage_project(project) and project['approval_status'] == 'pending' %}
+  <div class="review-note-box" style="background: var(--amber-dim); border-color: rgba(255,180,84,0.35); color: var(--amber);">
+    This project is awaiting admin review and isn't visible to other users yet.
+  </div>
+  {% endif %}
+
+  {% if project['live_demo_url'] or project['github_url'] %}
+  <div class="action-row">
+    {% if project['live_demo_url'] %}
+    <a href="{{ project['live_demo_url'] }}" target="_blank" rel="noopener" class="btn-live"><span class="pulse-dot"></span>View Live System</a>
+    {% endif %}
+    {% if project['github_url'] %}
+    <a href="{{ project['github_url'] }}" target="_blank" rel="noopener" class="btn-repo">View Source Code</a>
+    {% endif %}
+  </div>
+  {% endif %}
+
+  {% if can_manage_project(project) %}
+  <div class="manage-row">
+    <a href="{{ url_for('edit_project', project_id=project['id']) }}" class="btn-manage">Edit Project</a>
+    <form method="post" action="{{ url_for('delete_project', project_id=project['id']) }}" onsubmit="return confirm('Delete this project permanently? This cannot be undone.');">
+      <button type="submit" class="btn-manage danger">Delete Project</button>
+    </form>
+  </div>
+  {% endif %}
+</div>
+
+{% if builds_on or lineage_children %}
+<div class="lineage-chain">
+  {% if builds_on %}
+    <a href="{{ url_for('project_detail', project_id=builds_on['id']) }}">{{ builds_on['title'] }}</a>
+    <span class="arrow">&#8594;</span>
+    <span>{{ project['title'] }}</span>
+  {% endif %}
+  {% for child in lineage_children %}
+    {% if not builds_on %}<span>{{ project['title'] }}</span>{% endif %}
+    <span class="arrow">&#8594;</span>
+    <a href="{{ url_for('project_detail', project_id=child['id']) }}">{{ child['title'] }}</a>
+  {% endfor %}
+</div>
+{% endif %}
+
+<div class="meta-grid">
+  <div class="meta-item"><div class="label">Student</div><div class="value">{{ project['student_name'] }}</div></div>
+  <div class="meta-item"><div class="label">Supervisor</div><div class="value">{{ project['supervisor'] }}</div></div>
+  <div class="meta-item"><div class="label">Department</div><div class="value">{{ project['department'] }}</div></div>
+  <div class="meta-item"><div class="label">Topic Area</div><div class="value">{{ project['topic_area'] }}</div></div>
+  <div class="meta-item"><div class="label">Year</div><div class="value">{{ project['year'] }}</div></div>
+  <div class="meta-item"><div class="label">Keywords</div><div class="value">{{ project['keywords'] }}</div></div>
+  {% if owner %}
+  <div class="meta-item"><div class="label">Uploaded By</div><div class="value">{{ owner['name'] }} <span style="color: var(--text-faint);">({{ owner['role']|capitalize }})</span></div></div>
+  {% endif %}
+  {% if project['file_path'] %}
+  <div class="meta-item"><div class="label">Report</div><div class="value"><a href="{{ url_for('static', filename='..') }}" style="color: var(--violet-bright);">on file</a></div></div>
+  {% endif %}
+</div>
+
+<div class="abstract-block">
+  <h2>Abstract</h2>
+  <p>{{ project['abstract'] }}</p>
+</div>
+
+{% if related %}
+<div class="related-block">
+  <h2>Related Projects</h2>
+  <div class="related-grid">
+    {% for r, score in related %}
+    <a href="{{ url_for('project_detail', project_id=r['id']) }}" class="related-card">
+      <div class="rc-score">{{ score }}% conceptually related</div>
+      <div class="rc-title">{{ r['title'] }}</div>
+    </a>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
+
+
+<div class="discussion-block" id="discussion">
+  <h2>Discussion &amp; Q&amp;A</h2>
+
+  <form method="post" action="{{ url_for('add_comment', project_id=project['id']) }}" class="new-question-form">
+    <label for="new-question">Ask a question about this project</label>
+    <textarea id="new-question" name="body" placeholder="e.g. What database did you use for the recommendation engine?" required></textarea>
+    <button type="submit">Post Question</button>
+  </form>
+
+  {% if questions %}
+    {% for q in questions %}
+    <div class="question-thread">
+      <div class="comment-head">
+        <span class="comment-avatar">{{ q['author_name'][0]|upper }}</span>
+        <span class="comment-name">{{ q['author_name'] }}</span>
+        {% if owner and q['user_id'] == owner['id'] %}<span class="badge badge-author">Author</span>{% endif %}
+        <span class="badge badge-role-{{ q['author_role'] }}">{{ q['author_role']|capitalize }}</span>
+        <span class="comment-time">{{ q['created_at'][:16].replace('T', ' ') }}</span>
+      </div>
+      <p class="comment-body">{{ q['body'] }}</p>
+
+      {% if answers_by_parent.get(q['id']) %}
+      <div class="answers-list">
+        {% for a in answers_by_parent[q['id']] %}
+        <div>
+          <div class="comment-head">
+            <span class="comment-avatar">{{ a['author_name'][0]|upper }}</span>
+            <span class="comment-name">{{ a['author_name'] }}</span>
+            {% if owner and a['user_id'] == owner['id'] %}<span class="badge badge-author">Author</span>{% endif %}
+            <span class="badge badge-role-{{ a['author_role'] }}">{{ a['author_role']|capitalize }}</span>
+            <span class="comment-time">{{ a['created_at'][:16].replace('T', ' ') }}</span>
+          </div>
+          <p class="comment-body">{{ a['body'] }}</p>
+        </div>
+        {% endfor %}
+      </div>
+      {% endif %}
+
+      <form method="post" action="{{ url_for('add_comment', project_id=project['id']) }}" class="answer-form">
+        <input type="hidden" name="parent_id" value="{{ q['id'] }}">
+        <input type="text" name="body" placeholder="Write an answer…" required>
+        <button type="submit">Answer</button>
+      </form>
+    </div>
+    {% endfor %}
+  {% else %}
+    <div class="empty-state">No questions yet — be the first to ask something about this project.</div>
+  {% endif %}
+</div>
+
+{% endblock %}

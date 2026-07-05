@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block title %}My Profile — Launchpad{% endblock %}
+{% block content %}
+
+<div class="profile-header">
+  <div class="profile-avatar-lg">{{ member['name'][0]|upper }}</div>
+  <div>
+    <div class="profile-name">{{ member['name'] }}</div>
+    <div class="profile-email">{{ member['email'] }}</div>
+    <div class="profile-tags">
+      <span class="badge badge-role-{{ member['role'] }}">{{ current_user.role_label }}</span>
+      <span class="badge" style="background: rgba(255,255,255,0.06); color: var(--text-faint);">Member since {{ member['created_at'][:10] }}</span>
+      <span class="badge" style="background: rgba(255,255,255,0.06); color: var(--text-faint);">{{ projects|length }} upload{{ 's' if projects|length != 1 }}</span>
+    </div>
+  </div>
+  <div class="profile-actions">
+    <form method="get" action="{{ url_for('logout') }}" onsubmit="return true;">
+      <a href="{{ url_for('logout') }}" class="btn-signout" style="display: inline-block; text-decoration: none;">Sign out</a>
+    </form>
+  </div>
+</div>
+
+<div class="section-label" style="margin-top: 0;">My Uploads</div>
+
+{% if projects %}
+  {% for p in projects %}
+  <div class="mp-row">
+    <div>
+      <div class="mp-title">{{ p['title'] }}</div>
+      <div class="entry-meta" style="margin: 6px 0 0;">
+        <span>{{ p['department'] }}</span>
+        <span>{{ p['year'] }}</span>
+        <span>{{ p['view_count'] }} view{{ 's' if p['view_count'] != 1 }}</span>
+        {% if p['live_demo_url'] %}<span class="badge badge-live"><span class="pulse-dot"></span>Live</span>{% endif %}
+        <span class="badge badge-{{ p['status']|lower }}">{{ p['status'] }}</span>
+        <span class="badge badge-review-{{ p['approval_status'] }}">{{ p['approval_status']|capitalize }}</span>
+      </div>
+      {% if p['approval_status'] == 'rejected' and p['review_note'] %}
+      <div style="color: var(--coral); font-size: 0.8rem; margin-top: 6px;">Reason: {{ p['review_note'] }}</div>
+      {% endif %}
+    </div>
+    <div class="mp-actions">
+      <a href="{{ url_for('project_detail', project_id=p['id']) }}" class="btn-manage">View</a>
+      <a href="{{ url_for('edit_project', project_id=p['id']) }}" class="btn-manage">Edit</a>
+      <form method="post" action="{{ url_for('delete_project', project_id=p['id']) }}" onsubmit="return confirm('Delete this project permanently? This cannot be undone.');">
+        <button type="submit" class="btn-manage danger">Delete</button>
+      </form>
+    </div>
+  </div>
+  {% endfor %}
+{% else %}
+<div class="empty-state">
+  You haven't uploaded anything yet. <a href="{{ url_for('submit') }}" style="color: var(--violet-bright);">Upload your first project</a>.
+</div>
+{% endif %}
+
+{% endblock %}
