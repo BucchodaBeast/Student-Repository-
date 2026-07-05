@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% block title %}Pending Projects — Launchpad{% endblock %}
+{% block content %}
+
+<div class="hero-eyebrow">Admin</div>
+<h1 style="font-family: var(--font-display); font-size: 2rem; margin: 0 0 8px;">Pending Projects.</h1>
+<p style="color: var(--text-dim); max-width: 60ch; margin: 0 0 28px;">
+  New uploads sit here until {{ approvals_needed }} different admins approve them. Any admin can
+  vote once per project and change their vote while it's still pending. {{ rejections_needed }}
+  rejections turns a project away — the combined reasons are shown to the author.
+</p>
+
+<div class="section-label" style="margin-top: 0;">Pending ({{ pending|length }})</div>
+
+{% if pending %}
+  {% for p in pending %}
+  {% set prog = progress[p['id']] %}
+  <div class="review-card">
+    <div class="review-card-head">
+      <a href="{{ url_for('project_detail', project_id=p['id']) }}" class="review-card-title" style="color: var(--text);">{{ p['title'] }}</a>
+      <span class="badge badge-review-pending">Pending</span>
+    </div>
+    <div class="review-card-meta">
+      <span>{{ p['department'] }}</span>
+      <span>Uploaded by {{ p['owner_name'] or p['student_name'] }}</span>
+      <span>Supervisor: {{ p['supervisor'] }}</span>
+      <span>{{ p['created_at'][:10] }}</span>
+    </div>
+    <div class="review-card-abstract">{{ p['abstract'][:220] }}{{ '…' if p['abstract']|length > 220 }}</div>
+
+    <div style="margin: 10px 0; font-size: 0.85rem; color: var(--text-dim); display: flex; gap: 16px; flex-wrap: wrap;">
+      <span>✓ {{ prog.approvals|length }}/{{ approvals_needed }} approved{% if prog.approvals %} ({{ prog.approvals|map(attribute='admin_name')|join(', ') }}){% endif %}</span>
+      <span>✕ {{ prog.rejections|length }}/{{ rejections_needed }} rejected{% if prog.rejections %} ({{ prog.rejections|map(attribute='admin_name')|join(', ') }}){% endif %}</span>
+    </div>
+
+    {% if prog.my_vote %}
+    <div style="margin-bottom: 10px; font-size: 0.85rem; color: var(--text-faint);">
+      You voted <strong>{{ prog.my_vote }}</strong> on this — cast a different action below to change it.
+    </div>
+    {% endif %}
+
+    <div class="review-actions">
+      <form method="post" action="{{ url_for('review_project', project_id=p['id']) }}">
+        <input type="hidden" name="action" value="approve">
+        <button type="submit" class="btn-approve">{{ 'Change to Approve' if prog.my_vote == 'reject' else 'Approve' }}</button>
+      </form>
+      <form method="post" action="{{ url_for('review_project', project_id=p['id']) }}">
+        <input type="hidden" name="action" value="reject">
+        <textarea name="note" placeholder="Reason for rejection (required)" required></textarea>
+        <button type="submit" class="btn-reject">{{ 'Change to Reject' if prog.my_vote == 'approve' else 'Reject' }}</button>
+      </form>
+    </div>
+  </div>
+  {% endfor %}
+{% else %}
+  <div class="empty-state">Nothing waiting for review right now.</div>
+{% endif %}
+
+{% if recently_reviewed %}
+<div class="section-label">Recently Reviewed</div>
+{% for p in recently_reviewed %}
+<div class="reviewed-row">
+  <a href="{{ url_for('project_detail', project_id=p['id']) }}" style="color: var(--text); font-weight: 600;">{{ p['title'] }}</a>
+  <span class="badge badge-review-{{ p['approval_status'] }}">{{ p['approval_status']|capitalize }}</span>
+  <span style="color: var(--text-faint);">by {{ p['reviewer_name'] or 'Admin' }} &middot; {{ p['reviewed_at'][:10] }}</span>
+</div>
+{% endfor %}
+{% endif %}
+
+{% endblock %}

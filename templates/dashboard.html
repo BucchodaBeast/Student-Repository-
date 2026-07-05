@@ -1,0 +1,173 @@
+{% extends "base.html" %}
+{% block title %}Ledger — Launchpad{% endblock %}
+{% block content %}
+
+<div class="hero-eyebrow">Admin View</div>
+<h1 style="font-family: var(--font-display); font-size: 2rem; margin: 0 0 28px;">The Ledger.</h1>
+
+<div class="dash-grid">
+  <div class="stat-card">
+    <div class="stat-value">{{ total_projects }}</div>
+    <div class="stat-label">Projects on File</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-value">{{ pending_count }}</div>
+    <div class="stat-label">Awaiting Review</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-value">{{ live_projects }}</div>
+    <div class="stat-label">Live Systems</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-value">{{ total_users }}</div>
+    <div class="stat-label">Registered Accounts</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-value">{{ total_comments }}</div>
+    <div class="stat-label">Discussion Posts</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-value">{{ flagged_pairs|length }}</div>
+    <div class="stat-label">Overlap Flags</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-value">{{ total_downloads }}</div>
+    <div class="stat-label">Report Downloads</div>
+  </div>
+</div>
+
+{% if pending_count %}
+<div class="active-filter-bar" style="margin-bottom: 22px;">
+  <span>{{ pending_count }} project{{ 's' if pending_count != 1 }} waiting in <a href="{{ url_for('review_queue') }}" style="color: var(--violet-bright); font-weight: 600;">Pending Projects</a>.</span>
+</div>
+{% endif %}
+
+<div class="panel ai-panel">
+  <div class="ai-panel-header">
+    <h2 class="ai-panel-title"><span class="ai-dot"></span>AI Research Gap Advisor{% if gap_ai_unavailable %}<span class="ai-unavailable-dot" title="AI is currently unavailable — GROQ_API_KEY not set"></span>{% endif %}</h2>
+  </div>
+  <p class="ai-panel-hint">Pick a department to generate 3 new project ideas that don't duplicate existing work and address a real-world problem.</p>
+  <form method="get" action="{{ url_for('dashboard') }}" class="gap-form">
+    <select name="gap_department">
+      <option value="">Select a department…</option>
+      {% for d in departments %}
+      <option value="{{ d }}" {{ 'selected' if gap_department == d }}>{{ d }}</option>
+      {% endfor %}
+    </select>
+    <button type="submit" class="btn-secondary ai-btn">Generate Ideas</button>
+  </form>
+  {% if gap_suggestions %}
+    <div class="ai-questions" style="margin-top: 18px;">{{ gap_suggestions }}</div>
+  {% endif %}
+</div>
+
+<div class="panel">
+  <h2>Projects by Department</h2>
+  {% if department_counts %}
+    {% set max_dept = department_counts[0]['project_count'] %}
+    {% for d in department_counts %}
+    <div class="bar-row">
+      <span>{{ d['department'] }}</span>
+      <div class="bar-track"><div class="bar-fill" style="width: {{ (d['project_count'] / max_dept * 100)|round }}%;"></div></div>
+      <span class="bar-count">{{ d['project_count'] }}</span>
+    </div>
+    {% endfor %}
+  {% else %}
+    <div class="field-hint">No submissions yet.</div>
+  {% endif %}
+</div>
+
+<div class="panel">
+  <h2>Supervisor Load</h2>
+  {% if supervisor_load %}
+    {% set max_count = supervisor_load[0]['project_count'] %}
+    {% for s in supervisor_load %}
+    <div class="bar-row">
+      <span>{{ s['supervisor'] }}</span>
+      <div class="bar-track"><div class="bar-fill" style="width: {{ (s['project_count'] / max_count * 100)|round }}%;"></div></div>
+      <span class="bar-count">{{ s['project_count'] }}</span>
+    </div>
+    {% endfor %}
+  {% else %}
+    <div class="field-hint">No submissions yet.</div>
+  {% endif %}
+</div>
+
+<div class="panel">
+  <h2>Topic Coverage <span style="color: var(--text-faint); text-transform: none; letter-spacing: 0;">— spot oversaturated vs. under-explored areas</span></h2>
+  {% if topic_counts %}
+    {% set max_topic = topic_counts[0]['project_count'] %}
+    {% for t in topic_counts %}
+    <div class="bar-row">
+      <span>{{ t['topic_area'] }}</span>
+      <div class="bar-track"><div class="bar-fill" style="width: {{ (t['project_count'] / max_topic * 100)|round }}%;"></div></div>
+      <span class="bar-count">{{ t['project_count'] }}</span>
+    </div>
+    {% endfor %}
+  {% else %}
+    <div class="field-hint">No submissions yet.</div>
+  {% endif %}
+</div>
+
+<div class="panel">
+  <h2>Technology Insights <span style="color: var(--text-faint); text-transform: none; letter-spacing: 0;">— most used technologies across every project on file</span></h2>
+  {% if top_technologies %}
+    {% for tech, count in top_technologies %}
+    <div class="bar-row">
+      <span style="text-transform: capitalize;">{{ tech }}</span>
+      <div class="bar-track"><div class="bar-fill" style="width: {{ (count / max_tech_count * 100)|round }}%;"></div></div>
+      <span class="bar-count">{{ count }}</span>
+    </div>
+    {% endfor %}
+  {% else %}
+    <div class="field-hint">No recognizable technologies tallied yet.</div>
+  {% endif %}
+</div>
+
+<div class="panel">
+  <h2>Most Searched Terms</h2>
+  {% if top_searches %}
+    {% for term, count in top_searches %}
+    <div class="bar-row">
+      <span>{{ term }}</span>
+      <div class="bar-track"><div class="bar-fill" style="width: {{ (count / max_search_count * 100)|round }}%;"></div></div>
+      <span class="bar-count">{{ count }}</span>
+    </div>
+    {% endfor %}
+  {% else %}
+    <div class="field-hint">No searches logged yet.</div>
+  {% endif %}
+</div>
+
+<div class="panel">
+  <h2>Admin Settings</h2>
+  <p class="ai-panel-hint">Share this code with anyone who needs an admin account — it's required on the registration page to select the Admin role. Change it any time by setting <code>ADMIN_INVITE_CODE</code> in the environment.</p>
+  <div class="meta-item" style="max-width: 320px;">
+    <div class="label">Current Admin Invite Code</div>
+    <div class="value" style="font-family: var(--font-mono);">{{ admin_invite_code }}</div>
+  </div>
+</div>
+
+<div class="panel">
+  <h2>Highest Similarity Flags</h2>
+  {% if flagged_pairs %}
+  <table class="flag-table">
+    <thead>
+      <tr><th>Project</th><th>Overlaps With</th><th>Score</th></tr>
+    </thead>
+    <tbody>
+      {% for f in flagged_pairs %}
+      <tr>
+        <td><a href="{{ url_for('project_detail', project_id=f['pid1']) }}" style="color: var(--violet-bright);">{{ f['t1'] }}</a></td>
+        <td><a href="{{ url_for('project_detail', project_id=f['pid2']) }}" style="color: var(--violet-bright);">{{ f['t2'] }}</a></td>
+        <td class="score">{{ f['similarity_score']|round }}%</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+    <div class="field-hint">No overlaps flagged yet.</div>
+  {% endif %}
+</div>
+
+{% endblock %}
